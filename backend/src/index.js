@@ -1,19 +1,23 @@
-import { supabase } from "./config/supabase.js";
+import express  from "express";
+import cors from "cors";
 
-async function testConnection() {
-    const { data, error } = await supabase
-        .from("companies")
-        .select("id")
-        .limit(1);
+import authRoutes from "./routes/auth.routes.js";
 
-    if (error) {
-        console.error("❌ Supabase connection failed:");
-        console.error(error.message);
-        return;
-    }
+const app = express();
 
-    console.log("✅ Supabase connection successful!");
-    console.log("Companies:", data);
-}
+const PORT = process.env.PORT || 5000;
 
-testConnection();
+app.use(cors());
+app.use(express.json())
+
+app.get("/", (req, res) => {
+    res.json({
+        message: "CompanyBrain backend is running 🚀"
+    });
+});
+
+app.use("/api/auth", authRoutes)
+
+app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+});
