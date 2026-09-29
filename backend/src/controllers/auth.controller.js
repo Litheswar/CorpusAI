@@ -1,4 +1,5 @@
 import { signUp, login } from "../services/auth.service.js";
+import { getCurrentProfile } from "../services/profile.service.js";
 
 export async function signupController(req, res) {
     try {
@@ -50,6 +51,23 @@ export async function loginController(req, res) {
     } 
     catch (error) {
         res.status(401).json({
+            error: error.message
+        });
+    }
+}
+
+
+export async function profileController(req, res) {
+    try {
+        const profile = await getCurrentProfile();
+
+        res.status(200).json({
+            profile
+        });
+
+    } 
+    catch (error) {
+        res.status(500).json({
             error: error.message
         });
     }

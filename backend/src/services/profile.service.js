@@ -1,16 +1,6 @@
 import { supabase } from "../config/supabase.js";
 
-export async function getCurrentProfile() {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError) {
-        throw new Error(userError.message);
-    }
-
-    if (!user) {
-        throw new Error("User is not authenticated.");
-    }
-
+export async function getCurrentProfile(userId) {
     const { data, error } = await supabase
         .from("profiles")
         .select(`
@@ -23,7 +13,7 @@ export async function getCurrentProfile() {
                 name
             )
         `)
-        .eq("id", user.id)
+        .eq("id", userId)
         .single();
 
     if (error) {
@@ -31,4 +21,20 @@ export async function getCurrentProfile() {
     }
 
     return data;
+}
+
+
+export async function profileController(req, res) {
+    try {
+        const profile = await getCurrentProfile(req.user.id);
+
+        res.status(200).json({
+            profile
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            error: error.message
+        });
+    }
 }
