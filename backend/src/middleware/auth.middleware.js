@@ -1,4 +1,4 @@
-import { supabase } from "../config/supabase.js";
+import { createUserSupabaseClient } from "../config/supabase.js";
 
 export async function authenticate(req, res, next) {
     try {
@@ -12,10 +12,12 @@ export async function authenticate(req, res, next) {
 
         const token = authHeader.split(" ")[1];
 
+        const userSupabase = createUserSupabaseClient(token);
+
         const {
             data: { user },
             error
-        } = await supabase.auth.getUser(token);
+        } = await userSupabase.auth.getUser();
 
         if (error || !user) {
             return res.status(401).json({
@@ -24,6 +26,7 @@ export async function authenticate(req, res, next) {
         }
 
         req.user = user;
+        req.supabase = userSupabase;
 
         next();
 

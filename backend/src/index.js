@@ -2,6 +2,7 @@ import express  from "express";
 import cors from "cors";
 
 import authRoutes from "./routes/auth.routes.js";
+import documentRoutes from "./routes/document.routes.js";
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRoutes)
 
+app.use("/api/documents", documentRoutes);
 app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
