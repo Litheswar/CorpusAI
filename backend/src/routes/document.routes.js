@@ -2,7 +2,7 @@ import express from "express";
 import multer from "multer";
 
 import { authenticate } from "../middleware/auth.middleware.js";
-import { uploadDocumentController, getDocumentsController, getDocumentDownloadController } from "../controllers/document.controller.js";
+import { uploadDocumentController, getDocumentsController, getDocumentDownloadController, deleteDocumentController } from "../controllers/document.controller.js";
 
 const router = express.Router();
 
@@ -33,5 +33,10 @@ router.get(
     getDocumentDownloadController
 );
 
+router.delete(
+    "/:id",
+    authenticate,
+    deleteDocumentController
+);
 
 export default router;

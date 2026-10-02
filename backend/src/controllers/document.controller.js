@@ -1,4 +1,4 @@
-import { uploadDocument, getCompanyDocuments, getDocumentDownloadUrl } from "../services/document.service.js";
+import { uploadDocument, getCompanyDocuments, getDocumentDownloadUrl, deleteDocument } from "../services/document.service.js";
 
 export async function uploadDocumentController(req, res) {
     try {
@@ -57,5 +57,30 @@ export async function getDocumentDownloadController(req, res) {
         res.status(404).json({
             error: error.message
         });
+    }
+}
+
+
+export async function deleteDocumentController(req, res) {
+
+    try {
+
+        const result = await deleteDocument({
+            supabase: req.supabase,
+            userId: req.user.id,
+            documentId: req.params.id
+        });
+
+        res.status(200).json({
+            message: "Document deleted successfully.",
+            result
+        });
+
+    } catch (error) {
+
+        res.status(404).json({
+            error: error.message
+        });
+
     }
 }

@@ -228,3 +228,78 @@ export async function getDocumentDownloadUrl({
         download_url: signedUrlData.signedUrl
     };
 }
+
+
+
+export async function deleteDocument({
+    supabase,
+    userId,
+    documentId
+}) {
+
+    // 1. Get user's company
+    const {
+        data: profile,
+        error: profileError
+    } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", userId)
+        .single();
+
+    if (profileError || !profile) {
+        throw new Error("User profile not found.");
+    }
+
+    if (!profile.company_id) {
+        throw new Error("User is not associated with a company.");
+    }
+
+    // 2. Find document belonging to user's company
+    const {
+        data: document,
+        error: documentError
+    } = await supabase
+        .from("documents")
+        .select("id, storage_path")
+        .eq("id", documentId)
+        .eq("company_id", profile.company_id)
+        .single();
+
+    if (documentError || !document) {
+        throw new Error("Document not found.");
+    }
+
+    // 3. Delete file from Storage
+    const {
+        error: storageError
+    } = await supabase.storage
+        .from("documents")
+        .remove([document.storage_path]);
+
+    if (storageError) {
+        throw new Error(
+            `Failed to delete file: ${storageError.message}`
+        );
+    }
+
+    // 4. Delete metadata
+    const {
+        error: deleteError
+    } = await supabase
+        .from("documents")
+        .delete()
+        .eq("id", documentId)
+        .eq("company_id", profile.company_id);
+
+    if (deleteError) {
+        throw new Error(
+            `Failed to delete document metadata: ${deleteError.message}`
+        );
+    }
+
+    return {
+        id: documentId,
+        deleted: true
+    };
+}
