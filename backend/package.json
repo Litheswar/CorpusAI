@@ -13,10 +13,16 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@huggingface/transformers": "^4.3.0",
+    "@langchain/community": "^1.1.29",
+    "@langchain/core": "^1.2.14",
     "@supabase/supabase-js": "^2.117.2",
     "cors": "^2.8.6",
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
-    "multer": "^2.4.0"
+    "langchain": "^1.5.15",
+    "mammoth": "^1.13.0",
+    "multer": "^2.4.0",
+    "pdf-parse": "^2.4.5"
   }
 }
