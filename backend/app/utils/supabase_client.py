@@ -16,7 +16,10 @@ def get_supabase_client(config: Optional[Config] = None) -> Optional[Client]:
         return _supabase_client
 
     url = (config.SUPABASE_URL if config else Config.SUPABASE_URL)
-    key = (config.SUPABASE_ANON_KEY if config else Config.SUPABASE_ANON_KEY)
+    key = (
+        (getattr(config, "SUPABASE_PUBLISHABLE_KEY", None) or getattr(config, "SUPABASE_ANON_KEY", None))
+        if config else (Config.SUPABASE_PUBLISHABLE_KEY or Config.SUPABASE_ANON_KEY)
+    )
 
     if not url or not key:
         return None

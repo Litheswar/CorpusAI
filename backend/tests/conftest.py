@@ -179,6 +179,41 @@ class MockDatabase:
 
         return allowed_rows
 
+    def evaluate_rls_update(self, table_name: str, auth_user_id: str, row_id: str, update_fields: Dict[str, Any]) -> bool:
+        """
+        Simulates database-level UPDATE query execution with active RLS for `auth_user_id`.
+        Applies hardened Migration 002 RLS policies with WITH CHECK constraints.
+        Returns True if update succeeds, raises PermissionError/ValueError if blocked by RLS.
+        """
+        user_profile = next((p for p in self.get_table_data("profiles") if p.get("id") == auth_user_id and p.get("is_active")), None)
+        user_company_id = user_profile.get("company_id") if user_profile else None
+        user_role = user_profile.get("role") if user_profile else None
+
+        rows = self.get_table_data(table_name)
+        target_row = next((r for r in rows if r.get("id") == row_id), None)
+        if not target_row:
+            return False
+
+        if table_name == "profiles":
+            # Policy 1: profiles_update_self
+            if row_id == auth_user_id:
+                # WITH CHECK: id = auth.uid() AND company_id = get_auth_user_company_id() AND role = get_auth_user_role()
+                new_company = update_fields.get("company_id", target_row.get("company_id"))
+                new_role = update_fields.get("role", target_row.get("role"))
+                if new_company != user_company_id or new_role != user_role:
+                    raise PermissionError("RLS WITH CHECK violation: self-update cannot alter company_id or role")
+                target_row.update(update_fields)
+                return True
+
+            # Policy 2: profiles_update_admin
+            if user_role in ("owner", "admin") and target_row.get("company_id") == user_company_id:
+                target_row.update(update_fields)
+                return True
+
+            raise PermissionError("RLS USING violation: user cannot update profiles outside their authorized administrative scope")
+
+        return False
+
 
 def generate_token(
     user_id: str,

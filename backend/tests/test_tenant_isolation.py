@@ -229,3 +229,56 @@ def test_database_unique_constraints(mock_db):
             "name": "Engineering",
             "company_id": "company-a-uuid"
         }).execute()
+
+
+def test_database_rls_prevents_role_escalation_on_profile_update(mock_db):
+    """
+    PostgreSQL RLS policy 'profiles_update_self' with WITH CHECK constraints ensures:
+    - Regular employee Bob (user-a-emp-uuid) CANNOT escalate his role to 'owner'
+    - Regular employee Bob CANNOT change his company_id to Company B
+    - Regular employee Bob CAN update his own display name
+    """
+    # 1. Bob attempts to escalate his role to owner -> BLOCKED by RLS WITH CHECK
+    with pytest.raises(PermissionError, match="RLS WITH CHECK violation"):
+        mock_db.evaluate_rls_update(
+            table_name="profiles",
+            auth_user_id="user-a-emp-uuid",
+            row_id="user-a-emp-uuid",
+            update_fields={"role": "owner"}
+        )
+
+    # 2. Bob attempts to reassign his company_id to Company B -> BLOCKED by RLS WITH CHECK
+    with pytest.raises(PermissionError, match="RLS WITH CHECK violation"):
+        mock_db.evaluate_rls_update(
+            table_name="profiles",
+            auth_user_id="user-a-emp-uuid",
+            row_id="user-a-emp-uuid",
+            update_fields={"company_id": "company-b-uuid"}
+        )
+
+    # 3. Bob updates his own full_name -> ALLOWED
+    success = mock_db.evaluate_rls_update(
+        table_name="profiles",
+        auth_user_id="user-a-emp-uuid",
+        row_id="user-a-emp-uuid",
+        update_fields={"full_name": "Robert Employee"}
+    )
+    assert success is True
+    bob = next(p for p in mock_db.get_table_data("profiles") if p["id"] == "user-a-emp-uuid")
+    assert bob["full_name"] == "Robert Employee"
+    assert bob["role"] == "employee"
+    assert bob["company_id"] == "company-a-uuid"
+
+
+def test_database_rls_prevents_cross_tenant_profile_modification(mock_db):
+    """
+    User A Owner (Alice) cannot modify User B's profile (Charlie).
+    RLS USING clause drops cross-tenant update attempts.
+    """
+    with pytest.raises(PermissionError, match="RLS USING violation"):
+        mock_db.evaluate_rls_update(
+            table_name="profiles",
+            auth_user_id="user-a-owner-uuid",
+            row_id="user-b-owner-uuid",
+            update_fields={"full_name": "Hacked Charlie"}
+        )

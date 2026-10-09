@@ -21,8 +21,18 @@ class Config:
     HOST = os.getenv("HOST", "127.0.0.1")
 
     # Supabase Configuration
-    SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-    SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+    # Canonical project endpoint: https://yrnbpyatphohrrsojsem.supabase.co
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "https://yrnbpyatphohrrsojsem.supabase.co")
+    
+    # Supabase Publishable / Anon Key
+    SUPABASE_PUBLISHABLE_KEY = os.getenv(
+        "SUPABASE_PUBLISHABLE_KEY",
+        os.getenv("SUPABASE_ANON_KEY", "")
+    )
+    # Maintain backwards compatibility
+    SUPABASE_ANON_KEY = SUPABASE_PUBLISHABLE_KEY
+
+    # Privileged Service Role Key (Backend Only - NEVER expose to client)
     SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
     # JWT Authentication
@@ -36,14 +46,14 @@ class Config:
             missing = []
             if not cls.SUPABASE_URL:
                 missing.append("SUPABASE_URL")
-            if not cls.SUPABASE_ANON_KEY:
-                missing.append("SUPABASE_ANON_KEY")
+            if not cls.SUPABASE_PUBLISHABLE_KEY:
+                missing.append("SUPABASE_PUBLISHABLE_KEY (or SUPABASE_ANON_KEY)")
             if not cls.SUPABASE_SERVICE_ROLE_KEY:
                 missing.append("SUPABASE_SERVICE_ROLE_KEY")
             if not cls.JWT_SECRET:
                 missing.append("JWT_SECRET")
             if missing:
-                # Warning rather than hard crash to allow offline development
+                # Informative logging rather than hard crash to allow offline development & mock testing
                 import logging
                 logging.getLogger(__name__).warning(
                     f"Missing Supabase configuration keys: {', '.join(missing)}. "
@@ -57,7 +67,8 @@ class TestingConfig(Config):
     TESTING = True
     DEBUG = True
     SUPABASE_URL = "https://mock-testing-project.supabase.co"
-    SUPABASE_ANON_KEY = "mock-anon-key-for-testing"
+    SUPABASE_PUBLISHABLE_KEY = "mock-publishable-key-for-testing"
+    SUPABASE_ANON_KEY = "mock-publishable-key-for-testing"
     SUPABASE_SERVICE_ROLE_KEY = "mock-service-role-key-for-testing"
     JWT_SECRET = "super-secret-test-jwt-secret-key-32-bytes-minimum"
 
