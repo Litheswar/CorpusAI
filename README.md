@@ -70,8 +70,8 @@ Enterprises lose thousands of hours manually searching through dense handbooks a
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        DEVELOPMENT ROADMAP                             │
 ├────────────────────────────────────────────────────────────────────────┤
-│ Phase 0: System Architecture & Requirements Blueprint  ◀ [CURRENT]     │
-│ Phase 1: Database Setup, Supabase Auth & Multi-Tenant Core             │
+│ Phase 0: System Architecture & Requirements Blueprint  ✔ [COMPLETED]   │
+│ Phase 1: Database Setup, Supabase Auth & Multi-Tenant Core ✔ [COMPLETED]│
 │ Phase 2: Document Ingestion, Parsing, Chunking & Storage Pipeline      │
 │ Phase 3: Embedding Pipeline, pgvector Indexing & Vector Search         │
 │ Phase 4: Provider-Agnostic LLM Service & Grounded RAG Pipeline         │
@@ -83,19 +83,143 @@ Enterprises lose thousands of hours manually searching through dense handbooks a
 
 ---
 
-## 5. Phase 0 Documentation Blueprint
+## 5. Local Development & Setup
 
-All foundational blueprints and technical specifications have been authored and reviewed under the `docs/` directory:
+### 5.1 Prerequisites
+- Python 3.11+
+- Git
+- (Optional) Supabase CLI or active Supabase cloud project
 
-- 📋 [**Requirements Specification (`docs/requirements.md`)**](docs/requirements.md): Functional and non-functional requirements, user personas, roles, and boundaries.
-- 🏛️ [**System Architecture (`docs/phase-0-architecture.md`)**](docs/phase-0-architecture.md): Component breakdown, defense-in-depth model, directory structure, Architectural Decision Records (ADRs), and answers to all 20 architectural review questions.
-- 🗄️ [**Database Design (`docs/database-design.md`)**](docs/database-design.md): Entity-relationship diagrams, complete schema specifications for all tables, pgvector HNSW indexing, and Row Level Security (RLS) policies.
-- 🧠 [**RAG & AI Architecture (`docs/rag-architecture.md`)**](docs/rag-architecture.md): Document lifecycle state machine, parsing, chunking, chunk metadata schema, permission-aware vector search, provider-agnostic LLM interface, and citation mechanics.
-- 🌐 [**API Design (`docs/api-design.md`)**](docs/api-design.md): RESTful endpoint contracts for auth, companies, users, departments, documents, conversations, and chat completions.
-- 🛡️ [**Security & Threat Model (`docs/security-design.md`)**](docs/security-design.md): JWT validation, defense-in-depth enforcement, untrusted content handling, indirect prompt injection defense, and audit logging.
+### 5.2 Python Virtual Environment Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/Litheswar/CorpusAI.git
+cd CorpusAI
+
+# Create virtual environment
+python -m venv .venv
+
+# Activate on Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+
+# Activate on Linux/macOS
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r backend/requirements.txt
+```
+
+### 5.3 Environment Configuration
+
+Create a `.env` file in the `backend/` directory from `.env.example`:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+Populate `backend/.env` with your Supabase credentials:
+
+```ini
+FLASK_ENV=development
+PORT=5000
+HOST=127.0.0.1
+DEBUG=True
+
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_ANON_KEY=your-anon-public-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-secret-key
+JWT_SECRET=your-supabase-jwt-secret
+```
+
+> **Security Note**: Never commit `backend/.env`. The service-role key is a privileged secret that grants administrative database access and must never be exposed to clients.
+
+### 5.4 Database Setup & Migrations
+
+Apply the Phase 1 schema migration to your Supabase PostgreSQL instance:
+
+```bash
+# Via Supabase CLI:
+supabase db push
+
+# Or via psql / Supabase SQL Editor:
+# Run the contents of supabase/migrations/001_initial_schema.sql
+```
+
+The migration automatically enables the `vector` and `uuid-ossp` extensions, creates `companies`, `departments`, and `profiles` tables, adds anti-recursion `SECURITY DEFINER` functions, and enables Row Level Security (RLS) policies.
+
+### 5.5 Running the Flask API Server
+
+```bash
+python backend/run.py
+```
+
+The server starts at `http://127.0.0.1:5000`.
+
+### 5.6 Running Automated Tests
+
+Run the full automated test suite with pytest:
+
+```bash
+python -m pytest backend/tests/ -v
+```
+
+All 23 unit, integration, and security tests run in-memory and execute in under 0.2 seconds.
 
 ---
 
-## 6. Current Phase Status: Phase 0 Completed
+## 6. API Quickstart Examples
 
-Phase 0 is strictly a design, architecture, and requirements phase. No production code or migrations were created in this phase. The project is fully specified and ready to proceed to **Phase 1: Database Setup, Supabase Auth & Multi-Tenant Core**.
+### Health Check
+```bash
+curl -X GET http://127.0.0.1:5000/api/v1/health
+```
+Response:
+```json
+{
+  "service": "corpusai-api",
+  "status": "ok"
+}
+```
+
+### Onboard Company (Requires Supabase JWT)
+```bash
+curl -X POST http://127.0.0.1:5000/api/v1/companies \
+  -H "Authorization: Bearer <SUPABASE_JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Acme Technologies",
+    "owner_name": "Sarah Connor",
+    "slug": "acme-tech"
+  }'
+```
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "id": "d3b07384-d113-4e67-897b-95ee389c991e",
+    "name": "Acme Technologies",
+    "slug": "acme-tech",
+    "role": "owner"
+  }
+}
+```
+
+### Get My Company Workspace
+```bash
+curl -X GET http://127.0.0.1:5000/api/v1/companies/me \
+  -H "Authorization: Bearer <SUPABASE_JWT>"
+```
+
+---
+
+## 7. Documentation Index
+
+- 📋 [**Requirements Specification (`docs/requirements.md`)**](docs/requirements.md)
+- 🏛️ [**Phase 0 Architecture Blueprint (`docs/phase-0-architecture.md`)**](docs/phase-0-architecture.md)
+- 🗄️ [**Database Design Specification (`docs/database-design.md`)**](docs/database-design.md)
+- 🧠 [**RAG & AI Architecture (`docs/rag-architecture.md`)**](docs/rag-architecture.md)
+- 🌐 [**REST API Design (`docs/api-design.md`)**](docs/api-design.md)
+- 🛡️ [**Security & Threat Modeling (`docs/security-design.md`)**](docs/security-design.md)
+- 🚀 [**Phase 1 Implementation Report (`docs/phase-1-implementation.md`)**](docs/phase-1-implementation.md)
