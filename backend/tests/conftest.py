@@ -142,6 +142,73 @@ class MockDatabase:
     def table(self, name: str) -> MockTable:
         return MockTable(self, name)
 
+    def rpc(self, function_name: str, params: Dict[str, Any]):
+        """Simulates Supabase PostgREST RPC function execution."""
+        class MockRpcBuilder:
+            def __init__(self, db: "MockDatabase", fn_name: str, fn_params: Dict[str, Any]):
+                self.db = db
+                self.fn_name = fn_name
+                self.params = fn_params
+
+            def execute(self):
+                if self.fn_name == "create_company_with_owner":
+                    p_name = self.params.get("p_name")
+                    p_slug = self.params.get("p_slug")
+                    p_full_name = self.params.get("p_full_name") or f"{p_name} Owner"
+                    p_settings = self.params.get("p_settings", {})
+
+                    # Check slug uniqueness
+                    for c in self.db.get_table_data("companies"):
+                        if c.get("slug") == p_slug:
+                            raise ValueError(f"Company slug '{p_slug}' is already taken")
+
+                    # In test context, resolve user_id from active context or generate
+                    from flask import has_app_context, g
+                    user_id = g.user_id if has_app_context() and hasattr(g, "user_id") else str(uuid.uuid4())
+                    user_email = g.user_email if has_app_context() and hasattr(g, "user_email") else "owner@company.internal"
+
+                    # Check existing profile
+                    for p in self.db.get_table_data("profiles"):
+                        if p.get("id") == user_id and p.get("company_id"):
+                            raise ValueError("User is already associated with an existing company workspace")
+
+                    company_id = str(uuid.uuid4())
+                    company_row = {
+                        "id": company_id,
+                        "name": p_name,
+                        "slug": p_slug,
+                        "subscription_tier": "starter",
+                        "settings": p_settings,
+                        "created_at": "2026-10-09T19:00:00Z",
+                        "updated_at": "2026-10-09T19:00:00Z",
+                    }
+                    self.db.get_table_data("companies").append(company_row)
+
+                    profile_row = {
+                        "id": user_id,
+                        "company_id": company_id,
+                        "email": user_email,
+                        "full_name": p_full_name,
+                        "role": "owner",
+                        "is_active": True,
+                        "created_at": "2026-10-09T19:00:00Z",
+                        "updated_at": "2026-10-09T19:00:00Z",
+                    }
+                    self.db.get_table_data("profiles").append(profile_row)
+
+                    class MockRpcResponse:
+                        def __init__(self, data):
+                            self.data = data
+
+                    return MockRpcResponse({
+                        "company": company_row,
+                        "profile": profile_row,
+                    })
+
+                raise NotImplementedError(f"RPC function '{self.fn_name}' not implemented in test harness")
+
+        return MockRpcBuilder(self, function_name, params)
+
     # --------------------------------------------------------------------------
     # PostgreSQL Row Level Security (RLS) Simulation Engine
     # Evaluates the exact SQL RLS policies declared in 001_initial_schema.sql

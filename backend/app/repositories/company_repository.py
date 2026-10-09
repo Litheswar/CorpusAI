@@ -31,6 +31,33 @@ class CompanyRepository:
             logger.error(f"Error creating company: {e}")
             raise
 
+    def create_with_owner_rpc(
+        self,
+        name: str,
+        slug: str,
+        full_name: Optional[str] = None,
+        settings: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Calls the atomic PostgreSQL RPC function create_company_with_owner (Migration 002)."""
+        client = self.client
+        if not client:
+            raise InternalServerError("Database client unavailable")
+
+        try:
+            params = {
+                "p_name": name,
+                "p_slug": slug,
+                "p_full_name": full_name,
+                "p_settings": settings or {},
+            }
+            response = client.rpc("create_company_with_owner", params).execute()
+            if response.data:
+                return response.data
+            raise InternalServerError("RPC create_company_with_owner returned empty result")
+        except Exception as e:
+            logger.error(f"Error executing create_company_with_owner RPC: {e}")
+            raise
+
     def get_by_id(self, company_id: str) -> Optional[Dict[str, Any]]:
         """Retrieves a company by its UUID."""
         client = self.client

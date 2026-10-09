@@ -60,6 +60,25 @@ class CompanyService:
         if existing_company_by_slug:
             raise ConflictError(f"Company slug '{slug}' is already taken")
 
+        full_name = owner_name.strip() if owner_name else clean_name + " Owner"
+
+        # Attempt atomic database RPC (Migration 002: public.create_company_with_owner)
+        try:
+            rpc_result = self.company_repo.create_with_owner_rpc(
+                name=clean_name,
+                slug=slug,
+                full_name=full_name,
+                settings={},
+            )
+            if rpc_result and "company" in rpc_result and "profile" in rpc_result:
+                return rpc_result
+        except AttributeError:
+            # Fallback if injected client does not expose .rpc (e.g. basic mock)
+            pass
+        except Exception as rpc_err:
+            logger.warning(f"RPC onboarding failed or not available, attempting repository fallback: {rpc_err}")
+
+        # Fallback Multi-Step Execution with Compensating Rollback
         # 1. Create Company
         company_payload = {
             "name": clean_name,
@@ -72,7 +91,6 @@ class CompanyService:
         company_id = created_company["id"]
 
         # 2. Create Owner Profile
-        full_name = owner_name.strip() if owner_name else clean_name + " Owner"
         profile_payload = {
             "id": user_id,
             "company_id": company_id,
